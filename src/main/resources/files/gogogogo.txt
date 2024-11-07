@@ -1,0 +1,137 @@
+
+    driver.get(urlNow)
+    users_url = []
+    with open("E:\GitStart\Parser\info.txt", "w") as f:
+        for i in range(2, 4180):
+            time.sleep(1)
+            items = driver.find_elements(By.CLASS_NAME, 'item.item_shtamp')
+            users_url = []
+            # Откройте файл для записи результатов
+            for item in items:
+                text_block = item.find_element(By.CLASS_NAME, 'text')
+                head_block = text_block.find_element(By.CLASS_NAME, 'h')
+                ur = '"' + head_block.get_attribute("href") + '"'
+                users_url.append(ur)
+                print(ur)
+                f.write(ur + "\n")
+            next_url = urlNow + "/?page=" + str(i)
+            driver.get(next_url)
+            time.sleep(2)
+    with open("E:\GitStart\Parser\info.txt", "w") as f:
+        for userUrl in users_url:
+            driver.get(userUrl)
+            user_info = driver.find_element(By.CLASS_NAME, "vkladki_body.vkladki_body_show.vkladki_body_first.from_bb")
+            button = driver.find_element(By.ID, 'vkl_contact')
+            onclick_value = button.get_attribute('onclick').replace("show_kontakt_new('spec_id_new', '", '').replace("', 0)",'')
+            driver.execute_script("arguments[0].click();", button)
+            time.sleep(1)
+            contacts = driver.find_element(By.ID, "master_contact_list")
+            user_contacts = contacts.find_elements(By.TAG_NAME, "a")
+            f.write("INFO: " + user_info.text + '\n')
+            f.write("CONTACTS: " + str(len(user_contacts)) + "\n")
+            for el in user_contacts:
+                f.write("contact: " + el.get_attribute("href") + '\n')
+            f.write("NEXT USER:\n")
+            f.write("-----------------------------------------------------\n")
+            f.write("-----------------------------------------------------\n")
+            f.write("-----------------------------------------------------\n")
+
+
+def insert_info():
+    connection = psycopg2.connect(host="localhost",
+                                  user="postgres",
+                                  password="007787898",
+                                  database="parser",
+                                  port=5433)
+
+    driver = webdriver.Chrome()
+    driver.maximize_window()
+    driver.get("https://www.b17.ru/psiholog")
+    time.sleep(25)
+    driver.set_page_load_timeout(30)
+    with open("E:\GitStart\Parser\info.txt", "r") as f:
+        count = 0
+        for url in f:
+            count += 1
+            if count < 21820:
+                continue
+            correct_url = url.replace("\n", "").replace('"', '')
+            print(str(count) + " " + correct_url)
+            driver.get(correct_url)
+            try:
+                block = driver.find_element(By.ID, "maket_body_left")
+                user_name = block.find_element(By.TAG_NAME, "h1").text
+                user_info = driver.find_element(By.CLASS_NAME, "vkladki_body.vkladki_body_show.vkladki_body_first.from_bb").text
+                button = driver.find_element(By.ID, 'vkl_contact')
+                # onclick_value = button.get_attribute('onclick').replace("show_kontakt_new('spec_id_new', '", '').replace(
+                #     "', 0)", '')
+                driver.execute_script("arguments[0].click();", button)
+            except Exception as e:
+                continue
+            time.sleep(1)
+            contacts = driver.find_element(By.ID, "master_contact_list")
+            user_contacts = contacts.find_elements(By.TAG_NAME, "a")
+            contactsStr = ""
+            tg = ""
+            for el in user_contacts:
+                contact = el.get_attribute("href")
+                if 't.me' in contact:
+                    tg = contact
+                contactsStr = contactsStr + contact + "\n\n"
+
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO "users_info" (name, info, contacts, telegram) VALUES (%s, %s, %s, %s);""",
+                    (user_name, user_info, contactsStr, tg)
+                )
+            connection.commit()
+            time.sleep(8)
+
+
+
+def main():
+    # connection = psycopg2.connect(host = "localhost",
+    #                               user = "postgres",
+    #                               password = "007787898",
+    #                               database = "parser",
+    #                               port = 5433)
+    #get_source_html("https://www.b17.ru/psiholog/moskva/")
+    insert_info()
+
+if __name__ == "__main__":
+    main()
+
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
